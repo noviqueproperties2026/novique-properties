@@ -11,7 +11,8 @@ import {
   NIGERIA_LOCATIONS, NIGERIA_STATES,
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
-import { Loader2, Upload as UploadIcon, X } from "lucide-react";
+import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const MAX_IMAGES = 12;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -169,6 +170,12 @@ const Upload = () => {
   return (
     <Layout>
       <div className="container py-12 max-w-4xl">
+        <Link
+          to="/delete-listings"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-glow transition-smooth mb-6"
+        >
+          <Trash2 size={15} /> Go to Delete Listings Page →
+        </Link>
         <div className="mb-8">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin only</span>
           <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-secondary">Upload a property</h1>
