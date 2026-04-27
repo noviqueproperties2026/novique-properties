@@ -249,7 +249,7 @@ const Upload = () => {
             )}
           </Field>
 
-          <Field label="Video (max 1, under 2 minutes)">
+          <Field label="Video (optional, max 1, under 2 minutes)">
             <Input type="file" accept="video/*" onChange={(e) => onVideo(e.target.files?.[0] ?? null)} />
             {video && <p className="mt-2 text-xs text-muted-foreground">{video.name}</p>}
           </Field>
