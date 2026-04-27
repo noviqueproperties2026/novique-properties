@@ -59,9 +59,9 @@ const About = () => {
       <section className="container py-16 max-w-3xl">
         <h2 className="font-display text-3xl font-bold text-secondary">Achievements</h2>
         <div className="mt-6 space-y-5 text-muted-foreground leading-relaxed">
-          <p>🏆 Recognised among Nigeria's emerging real-estate platforms by Estate Insights Magazine, 2024.</p>
+          <p>🏆 Recognised among Nigeria's emerging real-estate platforms in Abuja.</p>
           <p>🤝 Successfully closed transactions across all six geo-political zones of Nigeria.</p>
-          <p>🏗 Long-standing partnerships with developers in Lekki, Ikoyi, Maitama and Asokoro.</p>
+          <p>🏗 Long-standing partnerships with developers in Maitama and Asokoro, Lugbe, Gwarinpa, Katampe, Lifecamp, Jahi, Lekki, Ikoyi.</p>
           <p>📈 Consistent year-on-year growth in listings, clients, and team strength since launch.</p>
         </div>
       </section>

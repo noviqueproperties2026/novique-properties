@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import {
-  NIGERIA_LOCATIONS,
   NIGERIA_STATES,
   STRUCTURE_CATEGORIES,
   BUILDING_CATEGORIES,
@@ -25,32 +24,19 @@ export interface SearchFilters {
 }
 
 const ANY = "any";
+const MAX_PRICE = 50_000_000_000;
 
 export const emptyFilters: SearchFilters = {
-  q: "", state: ANY, city: ANY, lga: ANY,
+  q: "", state: ANY, city: "", lga: "",
   structure: ANY, building: ANY, purchase: ANY,
-  area: "", priceMax: 1_000_000_000,
+  area: "", priceMax: MAX_PRICE,
 };
 
 export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }) => {
   const [f, setF] = useState<SearchFilters>(emptyFilters);
 
-  const cities = useMemo(
-    () => (f.state !== ANY ? Object.keys(NIGERIA_LOCATIONS[f.state] ?? {}) : []),
-    [f.state],
-  );
-  const lgas = useMemo(
-    () => (f.state !== ANY && f.city !== ANY ? NIGERIA_LOCATIONS[f.state]?.[f.city] ?? [] : []),
-    [f.state, f.city],
-  );
-
   const set = <K extends keyof SearchFilters>(k: K, v: SearchFilters[K]) =>
-    setF((p) => {
-      const next = { ...p, [k]: v };
-      if (k === "state") { next.city = ANY; next.lga = ANY; }
-      if (k === "city") next.lga = ANY;
-      return next;
-    });
+    setF((p) => ({ ...p, [k]: v }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,21 +67,19 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
           </SelectContent>
         </Select>
 
-        <Select value={f.city} onValueChange={(v) => set("city", v)} disabled={f.state === ANY}>
-          <SelectTrigger className="md:col-span-2 h-11"><SelectValue placeholder="City" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>All cities</SelectItem>
-            {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Input
+          placeholder="City"
+          value={f.city}
+          onChange={(e) => set("city", e.target.value)}
+          className="md:col-span-2 h-11"
+        />
 
-        <Select value={f.lga} onValueChange={(v) => set("lga", v)} disabled={f.city === ANY}>
-          <SelectTrigger className="md:col-span-2 h-11"><SelectValue placeholder="LGA / Area" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>All LGAs</SelectItem>
-            {lgas.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Input
+          placeholder="LGA / Area"
+          value={f.lga}
+          onChange={(e) => set("lga", e.target.value)}
+          className="md:col-span-2 h-11"
+        />
 
         <Select value={f.structure} onValueChange={(v) => set("structure", v)}>
           <SelectTrigger className="md:col-span-3 h-11"><SelectValue placeholder="Structure" /></SelectTrigger>
@@ -139,7 +123,7 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
             value={[f.priceMax]}
             onValueChange={(v) => set("priceMax", v[0])}
             min={1_000_000}
-            max={1_000_000_000}
+            max={MAX_PRICE}
             step={1_000_000}
           />
         </div>

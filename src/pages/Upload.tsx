@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  NIGERIA_LOCATIONS, NIGERIA_STATES,
+  NIGERIA_STATES,
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
@@ -31,22 +31,8 @@ const Upload = () => {
   const [video, setVideo] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const cities = useMemo(
-    () => (form.state ? Object.keys(NIGERIA_LOCATIONS[form.state] ?? {}) : []),
-    [form.state],
-  );
-  const lgas = useMemo(
-    () => (form.state && form.city ? NIGERIA_LOCATIONS[form.state]?.[form.city] ?? [] : []),
-    [form.state, form.city],
-  );
-
   const set = (k: keyof typeof form, v: string) =>
-    setForm((p) => {
-      const n = { ...p, [k]: v };
-      if (k === "state") { n.city = ""; n.lga = ""; }
-      if (k === "city") n.lga = "";
-      return n;
-    });
+    setForm((p) => ({ ...p, [k]: v }));
 
   const onImages = (files: FileList | null) => {
     if (!files) return;
@@ -197,20 +183,10 @@ const Upload = () => {
               </Select>
             </Field>
             <Field label="City">
-              <Select value={form.city} onValueChange={(v) => set("city", v)} disabled={!form.state}>
-                <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
-                <SelectContent>
-                  {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
             </Field>
             <Field label="LGA / Area">
-              <Select value={form.lga} onValueChange={(v) => set("lga", v)} disabled={!form.city}>
-                <SelectTrigger><SelectValue placeholder="Select LGA" /></SelectTrigger>
-                <SelectContent>
-                  {lgas.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
             </Field>
           </div>
 
@@ -273,7 +249,7 @@ const Upload = () => {
             )}
           </Field>
 
-          <Field label="Video (max 1, under 2 minutes)">
+          <Field label="Video (optional, max 1, under 2 minutes)">
             <Input type="file" accept="video/*" onChange={(e) => onVideo(e.target.files?.[0] ?? null)} />
             {video && <p className="mt-2 text-xs text-muted-foreground">{video.name}</p>}
           </Field>

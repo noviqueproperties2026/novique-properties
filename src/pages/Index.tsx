@@ -11,6 +11,8 @@ import { Loader2 } from "lucide-react";
 
 const PAGE = 10;
 const ANY = "any";
+const HERO_MAX = 10;
+const HERO_INTERVAL = 5000;
 
 const matchesFilters = (l: Listing, f: SearchFilters) => {
   const q = f.q.trim().toLowerCase();
@@ -19,8 +21,8 @@ const matchesFilters = (l: Listing, f: SearchFilters) => {
     if (!hay.includes(q)) return false;
   }
   if (f.state !== ANY && l.state.toLowerCase() !== f.state.toLowerCase()) return false;
-  if (f.city !== ANY && l.city.toLowerCase() !== f.city.toLowerCase()) return false;
-  if (f.lga !== ANY && l.lga.toLowerCase() !== f.lga.toLowerCase()) return false;
+  if (f.city.trim() && !l.city.toLowerCase().includes(f.city.trim().toLowerCase())) return false;
+  if (f.lga.trim() && !l.lga.toLowerCase().includes(f.lga.trim().toLowerCase())) return false;
   if (f.structure !== ANY && l.structure_category !== f.structure) return false;
   if (f.building !== ANY && l.building_category !== f.building) return false;
   if (f.purchase !== ANY && l.nature_of_purchase !== f.purchase) return false;
@@ -35,6 +37,7 @@ const Index = () => {
   const [filters, setFilters] = useState<SearchFilters>(emptyFilters);
   const [newCount, setNewCount] = useState(PAGE);
   const [hotCount, setHotCount] = useState(PAGE);
+  const [heroIdx, setHeroIdx] = useState(0);
 
   useEffect(() => {
     document.title = "Novique Properties — Premium Homes in Nigeria";
@@ -47,6 +50,27 @@ const Index = () => {
       setLoading(false);
     })();
   }, []);
+
+  // Build a randomized pool of hero images per session (max 10)
+  const heroImages = useMemo(() => {
+    const pool: string[] = [];
+    for (const l of all) {
+      for (const url of l.image_urls ?? []) pool.push(url);
+    }
+    if (pool.length === 0) return [];
+    // Fisher-Yates shuffle
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, HERO_MAX);
+  }, [all]);
+
+  useEffect(() => {
+    if (heroImages.length < 2) return;
+    const t = setInterval(() => setHeroIdx((p) => (p + 1) % heroImages.length), HERO_INTERVAL);
+    return () => clearInterval(t);
+  }, [heroImages.length]);
 
   const filtered = useMemo(() => all.filter((l) => matchesFilters(l, filters)), [all, filters]);
 
@@ -65,7 +89,18 @@ const Index = () => {
       {/* Hero */}
       <section className="relative">
         <div className="absolute inset-0">
-          <img src={heroImg} alt="Luxury Nigerian estate" className="h-full w-full object-cover" />
+          {heroImages.length === 0 ? (
+            <img src={heroImg} alt="Luxury Nigerian estate" className="h-full w-full object-cover" />
+          ) : (
+            heroImages.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`Featured property ${i + 1}`}
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${i === heroIdx ? "opacity-100" : "opacity-0"}`}
+              />
+            ))
+          )}
           <div className="absolute inset-0 gradient-hero" />
         </div>
         <div className="relative container py-20 md:py-32">

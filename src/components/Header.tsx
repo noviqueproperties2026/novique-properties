@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 const nav = [
   { label: "Home", to: "/" },
   { label: "About Us", to: "/about" },
-  { label: "Upload Property", to: "/upload" },
 ];
 
 export const Header = () => {
