@@ -183,20 +183,10 @@ const Upload = () => {
               </Select>
             </Field>
             <Field label="City">
-              <Select value={form.city} onValueChange={(v) => set("city", v)} disabled={!form.state}>
-                <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
-                <SelectContent>
-                  {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
             </Field>
             <Field label="LGA / Area">
-              <Select value={form.lga} onValueChange={(v) => set("lga", v)} disabled={!form.city}>
-                <SelectTrigger><SelectValue placeholder="Select LGA" /></SelectTrigger>
-                <SelectContent>
-                  {lgas.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
             </Field>
           </div>
 
