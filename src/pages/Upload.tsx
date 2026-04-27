@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  NIGERIA_LOCATIONS, NIGERIA_STATES,
+  NIGERIA_STATES,
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
@@ -31,22 +31,8 @@ const Upload = () => {
   const [video, setVideo] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const cities = useMemo(
-    () => (form.state ? Object.keys(NIGERIA_LOCATIONS[form.state] ?? {}) : []),
-    [form.state],
-  );
-  const lgas = useMemo(
-    () => (form.state && form.city ? NIGERIA_LOCATIONS[form.state]?.[form.city] ?? [] : []),
-    [form.state, form.city],
-  );
-
   const set = (k: keyof typeof form, v: string) =>
-    setForm((p) => {
-      const n = { ...p, [k]: v };
-      if (k === "state") { n.city = ""; n.lga = ""; }
-      if (k === "city") n.lga = "";
-      return n;
-    });
+    setForm((p) => ({ ...p, [k]: v }));
 
   const onImages = (files: FileList | null) => {
     if (!files) return;
