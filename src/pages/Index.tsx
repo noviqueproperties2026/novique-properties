@@ -14,11 +14,20 @@ const ANY = "any";
 const HERO_MAX = 10;
 const HERO_INTERVAL = 5000;
 
+// Flexible, token-based partial matching across name + location fields.
+// Logic:
+//  - If `q` provided: ANY token must appear (partial, case-insensitive) in
+//    name / estate_name / comment / city / lga / state.
+//  - If `state` provided (not ANY): listing state must match.
+//  - Optional filters (city, lga, structure, building, purchase, area, price)
+//    only narrow when set.
 const matchesFilters = (l: Listing, f: SearchFilters) => {
   const q = f.q.trim().toLowerCase();
   if (q) {
     const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state}`.toLowerCase();
-    if (!hay.includes(q)) return false;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const anyMatch = tokens.some((t) => hay.includes(t));
+    if (!anyMatch) return false;
   }
   if (f.state !== ANY && l.state.toLowerCase() !== f.state.toLowerCase()) return false;
   if (f.city.trim() && !l.city.toLowerCase().includes(f.city.trim().toLowerCase())) return false;
