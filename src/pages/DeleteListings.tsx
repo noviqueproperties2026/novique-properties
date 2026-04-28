@@ -69,7 +69,8 @@ const matches = (l: Listing, f: Filters) => {
   const q = f.q.trim().toLowerCase();
   if (q) {
     const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state}`.toLowerCase();
-    if (!hay.includes(q)) return false;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (!tokens.some((t) => hay.includes(t))) return false;
   }
   if (f.state !== ANY && l.state.toLowerCase() !== f.state.toLowerCase()) return false;
   if (f.city.trim() && !l.city.toLowerCase().includes(f.city.trim().toLowerCase())) return false;
