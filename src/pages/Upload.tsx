@@ -54,6 +54,8 @@ const Upload = () => {
 
   const onVideo = (file: File | null) => {
     if (!file) { setVideo(null); return; }
+    const err = validateVideoFile(file);
+    if (err) { toast.error(err); return; }
     const url = URL.createObjectURL(file);
     const el = document.createElement("video");
     el.preload = "metadata";
