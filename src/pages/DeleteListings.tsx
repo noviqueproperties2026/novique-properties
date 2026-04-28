@@ -12,10 +12,40 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "sonner";
 import {
   NIGERIA_STATES,
-  STRUCTURE_CATEGORIES, BUILDING_CATEGORIES,
+  STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { formatNaira, type Listing } from "@/types/listing";
 import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
+import {
+  sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
+  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+} from "@/lib/sanitize";
+
+// Extract the storage object path from a Supabase public URL.
+// Public URL pattern: <base>/storage/v1/object/public/<bucket>/<path>
+const pathFromPublicUrl = (url: string, bucket: string): string | null => {
+  try {
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    return decodeURIComponent(url.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+};
+
+// Safely remove a list of files from a bucket. Logs but never throws.
+const removeStorageFiles = async (bucket: string, urls: string[]) => {
+  const paths = urls
+    .map((u) => pathFromPublicUrl(u, bucket))
+    .filter((p): p is string => !!p);
+  if (paths.length === 0) return;
+  try {
+    await supabase.storage.from(bucket).remove(paths);
+  } catch (err) {
+    console.warn(`Storage cleanup failed for ${bucket}`, err);
+  }
+};
 
 const PAGE = 20;
 const ANY = "any";
