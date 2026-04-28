@@ -141,14 +141,15 @@ const DeleteListings = () => {
 
   const performDelete = async () => {
     if (!target) return;
-    if (!delEmail.trim() || !delPassword) {
-      toast.error("Provide both email and password");
+    const cleanEmail = sanitizeEmail(delEmail);
+    if (!cleanEmail || !delPassword) {
+      toast.error("Provide a valid email and password");
       return;
     }
     setDeleting(true);
     try {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: delEmail.trim(), password: delPassword,
+        email: cleanEmail, password: delPassword,
       });
       if (signErr || !signIn.user) {
         toast.error("Incorrect security details provided");
@@ -165,12 +166,20 @@ const DeleteListings = () => {
         return;
       }
 
+      // Capture media URLs BEFORE deleting the row
+      const imageUrls = target.image_urls ?? [];
+      const videoUrl = target.video_url;
+
       const { error: delErr } = await supabase
         .from("listings").delete().eq("id", target.id);
       if (delErr) throw delErr;
 
+      // Cleanup orphaned files (best-effort, runs while still authenticated)
+      await removeStorageFiles("listing-images", imageUrls);
+      if (videoUrl) await removeStorageFiles("listing-videos", [videoUrl]);
+
       await supabase.auth.signOut();
-      toast.success("Listing deleted");
+      toast.success("Listing and associated files deleted");
       setTarget(null);
       setDelEmail(""); setDelPassword("");
       await load();
