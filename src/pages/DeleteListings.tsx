@@ -214,10 +214,8 @@ const DeleteListings = () => {
     if (!files) return;
     const arr = Array.from(files);
     for (const f of arr) {
-      if (f.size > MAX_IMAGE_BYTES) {
-        toast.error(`${f.name} exceeds 5MB`);
-        return;
-      }
+      const err = validateImageFile(f, MAX_IMAGE_BYTES);
+      if (err) { toast.error(err); return; }
     }
     if (keepImages.length + newImages.length + arr.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images total`);
@@ -228,6 +226,8 @@ const DeleteListings = () => {
 
   const onPickVideo = (file: File | null) => {
     if (!file) { setNewVideo(null); return; }
+    const verr = validateVideoFile(file);
+    if (verr) { toast.error(verr); return; }
     const url = URL.createObjectURL(file);
     const el = document.createElement("video");
     el.preload = "metadata";
