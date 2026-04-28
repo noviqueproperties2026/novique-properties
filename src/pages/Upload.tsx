@@ -13,6 +13,10 @@ import {
 } from "@/data/nigeria-locations";
 import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
+  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+} from "@/lib/sanitize";
 
 const MAX_IMAGES = 12;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
