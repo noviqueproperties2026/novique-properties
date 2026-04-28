@@ -1,4 +1,8 @@
 // Bootstraps the Novique admin user. Idempotent.
+// SECURITY: The admin password is NEVER hardcoded. It is read from the
+// `ADMIN_BOOTSTRAP_PASSWORD` secret. Supabase stores the password as a salted
+// bcrypt hash in `auth.users` — we only set it once for initial provisioning
+// and verify against that hash on every subsequent admin login.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -7,12 +11,22 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "newtonagbonghae@gmail.com";
-const ADMIN_PASSWORD = "Newton047";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const adminPassword = Deno.env.get("ADMIN_BOOTSTRAP_PASSWORD");
+    if (!adminPassword || adminPassword.length < 8) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "ADMIN_BOOTSTRAP_PASSWORD secret is not configured (must be ≥ 8 chars).",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -28,7 +42,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: created, error: createErr } = await supabase.auth.admin.createUser({
         email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
+        password: adminPassword,
         email_confirm: true,
       });
       if (createErr) throw createErr;
