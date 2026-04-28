@@ -18,8 +18,8 @@ export const Footer = () => (
       <div>
         <h4 className="font-semibold mb-4 text-primary-glow">Get in touch</h4>
         <ul className="space-y-3 text-sm">
-          <li className="flex items-center gap-3"><Phone size={16} className="text-primary" /> Phone: 09023763465</li>
-          <li className="flex items-center gap-3"><MessageCircle size={16} className="text-primary" /> WhatsApp: 09023763465</li>
+          <li className="flex items-center gap-3"><Phone size={16} className="text-primary" /> Phone: +234 902 3763 465</li>
+          <li className="flex items-center gap-3"><MessageCircle size={16} className="text-primary" /> WhatsApp: +234 902 3763 465</li>
         </ul>
       </div>
 
