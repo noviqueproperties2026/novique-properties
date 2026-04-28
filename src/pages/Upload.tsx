@@ -42,10 +42,8 @@ const Upload = () => {
     if (!files) return;
     const arr = Array.from(files);
     for (const f of arr) {
-      if (f.size > MAX_IMAGE_BYTES) {
-        toast.error(`${f.name} exceeds 5MB`);
-        return;
-      }
+      const err = validateImageFile(f, MAX_IMAGE_BYTES);
+      if (err) { toast.error(err); return; }
     }
     if (images.length + arr.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images`);
