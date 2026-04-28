@@ -287,14 +287,14 @@ const Upload = () => {
           </Field>
 
           <Field label="Comment / description">
-            <Textarea rows={4} value={form.comment} onChange={(e) => set("comment", e.target.value)} placeholder="Describe the property, features, surroundings…" />
+            <Textarea maxLength={4000} rows={4} value={form.comment} onChange={(e) => set("comment", e.target.value)} placeholder="Describe the property, features, surroundings…" />
           </Field>
 
           <div className="border-t border-border pt-6">
             <h3 className="font-display font-bold text-secondary mb-3">Admin authentication</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Admin email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
-              <Field label="Admin password"><Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></Field>
+              <Field label="Admin email"><Input type="email" maxLength={254} autoComplete="off" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
+              <Field label="Admin password"><Input type="password" maxLength={200} autoComplete="off" value={form.password} onChange={(e) => set("password", e.target.value)} /></Field>
             </div>
           </div>
 
