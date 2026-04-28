@@ -12,10 +12,40 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "sonner";
 import {
   NIGERIA_STATES,
-  STRUCTURE_CATEGORIES, BUILDING_CATEGORIES,
+  STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { formatNaira, type Listing } from "@/types/listing";
 import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
+import {
+  sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
+  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+} from "@/lib/sanitize";
+
+// Extract the storage object path from a Supabase public URL.
+// Public URL pattern: <base>/storage/v1/object/public/<bucket>/<path>
+const pathFromPublicUrl = (url: string, bucket: string): string | null => {
+  try {
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    return decodeURIComponent(url.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+};
+
+// Safely remove a list of files from a bucket. Logs but never throws.
+const removeStorageFiles = async (bucket: string, urls: string[]) => {
+  const paths = urls
+    .map((u) => pathFromPublicUrl(u, bucket))
+    .filter((p): p is string => !!p);
+  if (paths.length === 0) return;
+  try {
+    await supabase.storage.from(bucket).remove(paths);
+  } catch (err) {
+    console.warn(`Storage cleanup failed for ${bucket}`, err);
+  }
+};
 
 const PAGE = 20;
 const ANY = "any";
@@ -39,7 +69,8 @@ const matches = (l: Listing, f: Filters) => {
   const q = f.q.trim().toLowerCase();
   if (q) {
     const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state}`.toLowerCase();
-    if (!hay.includes(q)) return false;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (!tokens.some((t) => hay.includes(t))) return false;
   }
   if (f.state !== ANY && l.state.toLowerCase() !== f.state.toLowerCase()) return false;
   if (f.city.trim() && !l.city.toLowerCase().includes(f.city.trim().toLowerCase())) return false;
@@ -110,14 +141,15 @@ const DeleteListings = () => {
 
   const performDelete = async () => {
     if (!target) return;
-    if (!delEmail.trim() || !delPassword) {
-      toast.error("Provide both email and password");
+    const cleanEmail = sanitizeEmail(delEmail);
+    if (!cleanEmail || !delPassword) {
+      toast.error("Provide a valid email and password");
       return;
     }
     setDeleting(true);
     try {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: delEmail.trim(), password: delPassword,
+        email: cleanEmail, password: delPassword,
       });
       if (signErr || !signIn.user) {
         toast.error("Incorrect security details provided");
@@ -134,12 +166,20 @@ const DeleteListings = () => {
         return;
       }
 
+      // Capture media URLs BEFORE deleting the row
+      const imageUrls = target.image_urls ?? [];
+      const videoUrl = target.video_url;
+
       const { error: delErr } = await supabase
         .from("listings").delete().eq("id", target.id);
       if (delErr) throw delErr;
 
+      // Cleanup orphaned files (best-effort, runs while still authenticated)
+      await removeStorageFiles("listing-images", imageUrls);
+      if (videoUrl) await removeStorageFiles("listing-videos", [videoUrl]);
+
       await supabase.auth.signOut();
-      toast.success("Listing deleted");
+      toast.success("Listing and associated files deleted");
       setTarget(null);
       setDelEmail(""); setDelPassword("");
       await load();
@@ -174,10 +214,8 @@ const DeleteListings = () => {
     if (!files) return;
     const arr = Array.from(files);
     for (const f of arr) {
-      if (f.size > MAX_IMAGE_BYTES) {
-        toast.error(`${f.name} exceeds 5MB`);
-        return;
-      }
+      const err = validateImageFile(f, MAX_IMAGE_BYTES);
+      if (err) { toast.error(err); return; }
     }
     if (keepImages.length + newImages.length + arr.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images total`);
@@ -188,6 +226,8 @@ const DeleteListings = () => {
 
   const onPickVideo = (file: File | null) => {
     if (!file) { setNewVideo(null); return; }
+    const verr = validateVideoFile(file);
+    if (verr) { toast.error(verr); return; }
     const url = URL.createObjectURL(file);
     const el = document.createElement("video");
     el.preload = "metadata";
@@ -205,12 +245,32 @@ const DeleteListings = () => {
 
   const performUpdate = async () => {
     if (!editing || !form) return;
-    if (!form.name.trim() || !form.state.trim() || !form.city.trim() || !form.lga.trim() || !form.price.trim()) {
-      toast.error("Name, state, city, LGA and price are required");
+
+    // Sanitize all text inputs
+    const safe = {
+      name: sanitizeShort(form.name, 200),
+      state: whitelist(form.state, NIGERIA_STATES, "") || sanitizeShort(form.state, 60),
+      city: sanitizeShort(form.city, 80),
+      lga: sanitizeShort(form.lga, 80),
+      estate_name: sanitizeShort(form.estate_name, 120),
+      area_of_land: sanitizeShort(form.area_of_land, 60),
+      structure_category: whitelist(form.structure_category, STRUCTURE_CATEGORIES, "") || sanitizeShort(form.structure_category, 60),
+      building_category: whitelist(form.building_category, BUILDING_CATEGORIES, "") || sanitizeShort(form.building_category, 60),
+      nature_of_purchase: whitelist(form.nature_of_purchase, PURCHASE_NATURES, "") || sanitizeShort(form.nature_of_purchase, 60),
+      comment: sanitizeText(form.comment, 4000),
+      price: sanitizeNumber(form.price, 1e15),
+    };
+    const cleanEmail = sanitizeEmail(editEmail);
+
+    if (!safe.name || !safe.state || !safe.city || !safe.lga) {
+      toast.error("Name, state, city and LGA are required");
       return;
     }
-    if (!editEmail.trim() || !editPassword) {
-      toast.error("Provide both admin email and password");
+    if (!Number.isFinite(safe.price) || safe.price <= 0) {
+      toast.error("Invalid price"); return;
+    }
+    if (!cleanEmail || !editPassword) {
+      toast.error("Provide a valid admin email and password");
       return;
     }
     if (keepImages.length + newImages.length === 0) {
@@ -225,7 +285,7 @@ const DeleteListings = () => {
     setUpdating(true);
     try {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: editEmail.trim(), password: editPassword,
+        email: cleanEmail, password: editPassword,
       });
       if (signErr || !signIn.user) {
         toast.error("Incorrect security details provided");
@@ -242,10 +302,10 @@ const DeleteListings = () => {
         return;
       }
 
-      // Upload new images
+      // Upload new images — sanitized extensions only
       const uploadedImageUrls: string[] = [];
       for (const file of newImages) {
-        const ext = file.name.split(".").pop() || "jpg";
+        const ext = safeImageExt(file.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type });
         if (upErr) throw upErr;
@@ -257,7 +317,7 @@ const DeleteListings = () => {
       // Handle video
       let finalVideoUrl: string | null = keepVideo;
       if (newVideo) {
-        const ext = newVideo.name.split(".").pop() || "mp4";
+        const ext = safeVideoExt(newVideo.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: vErr } = await supabase.storage.from("listing-videos").upload(path, newVideo, { contentType: newVideo.type });
         if (vErr) throw vErr;
@@ -265,30 +325,30 @@ const DeleteListings = () => {
         finalVideoUrl = pub.publicUrl;
       }
 
-      const priceNum = Number(form.price);
-      if (!Number.isFinite(priceNum) || priceNum < 0) {
-        toast.error("Invalid price");
-        setUpdating(false);
-        await supabase.auth.signOut();
-        return;
-      }
-
       const { error: upErr } = await supabase.from("listings").update({
-        name: form.name.trim(),
-        state: form.state.trim(),
-        city: form.city.trim(),
-        lga: form.lga.trim(),
-        estate_name: form.estate_name.trim() || null,
-        area_of_land: form.area_of_land.trim() || null,
-        price: priceNum,
-        structure_category: form.structure_category.trim(),
-        building_category: form.building_category.trim(),
-        nature_of_purchase: form.nature_of_purchase.trim(),
-        comment: form.comment.trim() || null,
+        name: safe.name,
+        state: safe.state,
+        city: safe.city,
+        lga: safe.lga,
+        estate_name: safe.estate_name || null,
+        area_of_land: safe.area_of_land || null,
+        price: safe.price,
+        structure_category: safe.structure_category,
+        building_category: safe.building_category,
+        nature_of_purchase: safe.nature_of_purchase,
+        comment: safe.comment || null,
         image_urls: finalImageUrls,
         video_url: finalVideoUrl,
       }).eq("id", editing.id);
       if (upErr) throw upErr;
+
+      // Cleanup orphaned images & replaced video
+      const originalImages = editing.image_urls ?? [];
+      const removedImages = originalImages.filter((u) => !keepImages.includes(u));
+      if (removedImages.length) await removeStorageFiles("listing-images", removedImages);
+      if (editing.video_url && editing.video_url !== finalVideoUrl) {
+        await removeStorageFiles("listing-videos", [editing.video_url]);
+      }
 
       await supabase.auth.signOut();
       toast.success("Listing updated");

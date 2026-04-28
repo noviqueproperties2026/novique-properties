@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 import {
   NIGERIA_STATES,
   STRUCTURE_CATEGORIES,
   BUILDING_CATEGORIES,
   PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
+import { sanitizeShort, whitelist } from "@/lib/sanitize";
 
 export interface SearchFilters {
   q: string;
@@ -40,7 +42,26 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(f);
+
+    // Sanitize all text inputs before applying
+    const cleaned: SearchFilters = {
+      q: sanitizeShort(f.q, 100),
+      state: whitelist(f.state, [ANY, ...NIGERIA_STATES] as const, ANY) || ANY,
+      city: sanitizeShort(f.city, 80),
+      lga: sanitizeShort(f.lga, 80),
+      structure: whitelist(f.structure, [ANY, ...STRUCTURE_CATEGORIES] as const, ANY) || ANY,
+      building: whitelist(f.building, [ANY, ...BUILDING_CATEGORIES] as const, ANY) || ANY,
+      purchase: whitelist(f.purchase, [ANY, ...PURCHASE_NATURES] as const, ANY) || ANY,
+      area: sanitizeShort(f.area, 60),
+      priceMax: Number.isFinite(f.priceMax) && f.priceMax > 0 ? f.priceMax : MAX_PRICE,
+    };
+
+    if (!cleaned.q && cleaned.state === ANY) {
+      toast.error("Enter a property name or pick a state to search");
+      return;
+    }
+
+    onSearch(cleaned);
   };
 
   return (
@@ -55,6 +76,7 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
             placeholder="Search by name, estate, or keyword..."
             value={f.q}
             onChange={(e) => set("q", e.target.value)}
+            maxLength={100}
             className="pl-9 h-11"
           />
         </div>
@@ -68,16 +90,18 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
         </Select>
 
         <Input
-          placeholder="City"
+          placeholder="City (optional)"
           value={f.city}
           onChange={(e) => set("city", e.target.value)}
+          maxLength={80}
           className="md:col-span-2 h-11"
         />
 
         <Input
-          placeholder="LGA / Area"
+          placeholder="LGA / Area (optional)"
           value={f.lga}
           onChange={(e) => set("lga", e.target.value)}
+          maxLength={80}
           className="md:col-span-2 h-11"
         />
 
@@ -109,6 +133,7 @@ export const SearchBar = ({ onSearch }: { onSearch: (f: SearchFilters) => void }
           placeholder="Land area (e.g. 600 sqm)"
           value={f.area}
           onChange={(e) => set("area", e.target.value)}
+          maxLength={60}
           className="md:col-span-3 h-11"
         />
 

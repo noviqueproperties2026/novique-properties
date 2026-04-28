@@ -13,6 +13,10 @@ import {
 } from "@/data/nigeria-locations";
 import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
+  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+} from "@/lib/sanitize";
 
 const MAX_IMAGES = 12;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -38,10 +42,8 @@ const Upload = () => {
     if (!files) return;
     const arr = Array.from(files);
     for (const f of arr) {
-      if (f.size > MAX_IMAGE_BYTES) {
-        toast.error(`${f.name} exceeds 5MB`);
-        return;
-      }
+      const err = validateImageFile(f, MAX_IMAGE_BYTES);
+      if (err) { toast.error(err); return; }
     }
     if (images.length + arr.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images`);
@@ -52,6 +54,8 @@ const Upload = () => {
 
   const onVideo = (file: File | null) => {
     if (!file) { setVideo(null); return; }
+    const err = validateVideoFile(file);
+    if (err) { toast.error(err); return; }
     const url = URL.createObjectURL(file);
     const el = document.createElement("video");
     el.preload = "metadata";
@@ -69,9 +73,37 @@ const Upload = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const required: (keyof typeof form)[] = ["name","state","city","lga","estate_name","area_of_land","price","structure","building","purchase","comment","email","password"];
-    for (const k of required) {
-      if (!String(form[k] ?? "").trim()) { toast.error(`Please fill in: ${k.replace("_", " ")}`); return; }
+    // Sanitize all inputs up front
+    const safe = {
+      name: sanitizeShort(form.name, 200),
+      state: whitelist(form.state, NIGERIA_STATES, "") as string,
+      city: sanitizeShort(form.city, 80),
+      lga: sanitizeShort(form.lga, 80),
+      estate_name: sanitizeShort(form.estate_name, 120),
+      area_of_land: sanitizeShort(form.area_of_land, 60),
+      price: sanitizeNumber(form.price, 1e15),
+      structure: whitelist(form.structure, STRUCTURE_CATEGORIES, "") as string,
+      building: whitelist(form.building, BUILDING_CATEGORIES, "") as string,
+      purchase: whitelist(form.purchase, PURCHASE_NATURES, "") as string,
+      comment: sanitizeText(form.comment, 4000),
+      email: sanitizeEmail(form.email),
+      password: typeof form.password === "string" ? form.password : "",
+    };
+
+    const requiredText: [string, string][] = [
+      ["name", safe.name], ["state", safe.state], ["city", safe.city], ["lga", safe.lga],
+      ["estate name", safe.estate_name], ["area of land", safe.area_of_land],
+      ["structure", safe.structure], ["building", safe.building], ["nature of purchase", safe.purchase],
+      ["comment", safe.comment], ["admin email", safe.email],
+    ];
+    for (const [label, val] of requiredText) {
+      if (!val) { toast.error(`Please provide a valid: ${label}`); return; }
+    }
+    if (!Number.isFinite(safe.price) || safe.price <= 0) {
+      toast.error("Please provide a valid price"); return;
+    }
+    if (!safe.password || safe.password.length < 6) {
+      toast.error("Please provide your admin password"); return;
     }
     if (images.length === 0) { toast.error("Add at least one image"); return; }
 
@@ -79,8 +111,8 @@ const Upload = () => {
     try {
       // Auth as admin
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: form.email.trim(),
-        password: form.password,
+        email: safe.email,
+        password: safe.password,
       });
       if (signErr || !signIn.user) {
         toast.error("Incorrect security details provided");
@@ -100,10 +132,10 @@ const Upload = () => {
         return;
       }
 
-      // Upload images
+      // Upload images — sanitized extensions only
       const imageUrls: string[] = [];
       for (const file of images) {
-        const ext = file.name.split(".").pop() || "jpg";
+        const ext = safeImageExt(file.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type });
         if (upErr) throw upErr;
@@ -114,7 +146,7 @@ const Upload = () => {
       // Upload video
       let videoUrl: string | null = null;
       if (video) {
-        const ext = video.name.split(".").pop() || "mp4";
+        const ext = safeVideoExt(video.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: vErr } = await supabase.storage.from("listing-videos").upload(path, video, { contentType: video.type });
         if (vErr) throw vErr;
@@ -123,17 +155,17 @@ const Upload = () => {
       }
 
       const { error: insertErr } = await supabase.from("listings").insert({
-        name: form.name.trim(),
-        state: form.state,
-        city: form.city,
-        lga: form.lga,
-        estate_name: form.estate_name.trim(),
-        area_of_land: form.area_of_land.trim(),
-        price: Number(form.price),
-        structure_category: form.structure,
-        building_category: form.building,
-        nature_of_purchase: form.purchase,
-        comment: form.comment.trim(),
+        name: safe.name,
+        state: safe.state,
+        city: safe.city,
+        lga: safe.lga,
+        estate_name: safe.estate_name,
+        area_of_land: safe.area_of_land,
+        price: safe.price,
+        structure_category: safe.structure,
+        building_category: safe.building,
+        nature_of_purchase: safe.purchase,
+        comment: safe.comment,
         image_urls: imageUrls,
         video_url: videoUrl,
         created_by: signIn.user.id,
@@ -170,7 +202,7 @@ const Upload = () => {
 
         <form onSubmit={submit} className="bg-card border border-border/60 rounded-2xl p-6 md:p-8 space-y-6 shadow-card">
           <Field label="Listing name">
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. 4-Bed Smart Duplex with BQ" />
+            <Input maxLength={200} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. 4-Bed Smart Duplex with BQ" />
           </Field>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -183,17 +215,17 @@ const Upload = () => {
               </Select>
             </Field>
             <Field label="City">
-              <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
+              <Input maxLength={80} value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
             </Field>
             <Field label="LGA / Area">
-              <Input value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
+              <Input maxLength={80} value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
             </Field>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Estate name"><Input value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
-            <Field label="Area of land"><Input value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
-            <Field label="Price (₦)"><Input type="number" min="0" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            <Field label="Estate name"><Input maxLength={120} value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
+            <Field label="Area of land"><Input maxLength={60} value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
+            <Field label="Price (₦)"><Input type="number" min="0" max="1000000000000000" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -255,14 +287,14 @@ const Upload = () => {
           </Field>
 
           <Field label="Comment / description">
-            <Textarea rows={4} value={form.comment} onChange={(e) => set("comment", e.target.value)} placeholder="Describe the property, features, surroundings…" />
+            <Textarea maxLength={4000} rows={4} value={form.comment} onChange={(e) => set("comment", e.target.value)} placeholder="Describe the property, features, surroundings…" />
           </Field>
 
           <div className="border-t border-border pt-6">
             <h3 className="font-display font-bold text-secondary mb-3">Admin authentication</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Admin email"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
-              <Field label="Admin password"><Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></Field>
+              <Field label="Admin email"><Input type="email" maxLength={254} autoComplete="off" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
+              <Field label="Admin password"><Input type="password" maxLength={200} autoComplete="off" value={form.password} onChange={(e) => set("password", e.target.value)} /></Field>
             </div>
           </div>
 
