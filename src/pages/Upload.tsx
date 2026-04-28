@@ -202,7 +202,7 @@ const Upload = () => {
 
         <form onSubmit={submit} className="bg-card border border-border/60 rounded-2xl p-6 md:p-8 space-y-6 shadow-card">
           <Field label="Listing name">
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. 4-Bed Smart Duplex with BQ" />
+            <Input maxLength={200} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. 4-Bed Smart Duplex with BQ" />
           </Field>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -215,17 +215,17 @@ const Upload = () => {
               </Select>
             </Field>
             <Field label="City">
-              <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
+              <Input maxLength={80} value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Enter city" />
             </Field>
             <Field label="LGA / Area">
-              <Input value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
+              <Input maxLength={80} value={form.lga} onChange={(e) => set("lga", e.target.value)} placeholder="Enter LGA / area" />
             </Field>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Estate name"><Input value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
-            <Field label="Area of land"><Input value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
-            <Field label="Price (₦)"><Input type="number" min="0" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            <Field label="Estate name"><Input maxLength={120} value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
+            <Field label="Area of land"><Input maxLength={60} value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
+            <Field label="Price (₦)"><Input type="number" min="0" max="1000000000000000" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
