@@ -245,12 +245,32 @@ const DeleteListings = () => {
 
   const performUpdate = async () => {
     if (!editing || !form) return;
-    if (!form.name.trim() || !form.state.trim() || !form.city.trim() || !form.lga.trim() || !form.price.trim()) {
-      toast.error("Name, state, city, LGA and price are required");
+
+    // Sanitize all text inputs
+    const safe = {
+      name: sanitizeShort(form.name, 200),
+      state: whitelist(form.state, NIGERIA_STATES, "") || sanitizeShort(form.state, 60),
+      city: sanitizeShort(form.city, 80),
+      lga: sanitizeShort(form.lga, 80),
+      estate_name: sanitizeShort(form.estate_name, 120),
+      area_of_land: sanitizeShort(form.area_of_land, 60),
+      structure_category: whitelist(form.structure_category, STRUCTURE_CATEGORIES, "") || sanitizeShort(form.structure_category, 60),
+      building_category: whitelist(form.building_category, BUILDING_CATEGORIES, "") || sanitizeShort(form.building_category, 60),
+      nature_of_purchase: whitelist(form.nature_of_purchase, PURCHASE_NATURES, "") || sanitizeShort(form.nature_of_purchase, 60),
+      comment: sanitizeText(form.comment, 4000),
+      price: sanitizeNumber(form.price, 1e15),
+    };
+    const cleanEmail = sanitizeEmail(editEmail);
+
+    if (!safe.name || !safe.state || !safe.city || !safe.lga) {
+      toast.error("Name, state, city and LGA are required");
       return;
     }
-    if (!editEmail.trim() || !editPassword) {
-      toast.error("Provide both admin email and password");
+    if (!Number.isFinite(safe.price) || safe.price <= 0) {
+      toast.error("Invalid price"); return;
+    }
+    if (!cleanEmail || !editPassword) {
+      toast.error("Provide a valid admin email and password");
       return;
     }
     if (keepImages.length + newImages.length === 0) {
@@ -265,7 +285,7 @@ const DeleteListings = () => {
     setUpdating(true);
     try {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: editEmail.trim(), password: editPassword,
+        email: cleanEmail, password: editPassword,
       });
       if (signErr || !signIn.user) {
         toast.error("Incorrect security details provided");
@@ -282,10 +302,10 @@ const DeleteListings = () => {
         return;
       }
 
-      // Upload new images
+      // Upload new images — sanitized extensions only
       const uploadedImageUrls: string[] = [];
       for (const file of newImages) {
-        const ext = file.name.split(".").pop() || "jpg";
+        const ext = safeImageExt(file.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type });
         if (upErr) throw upErr;
@@ -297,7 +317,7 @@ const DeleteListings = () => {
       // Handle video
       let finalVideoUrl: string | null = keepVideo;
       if (newVideo) {
-        const ext = newVideo.name.split(".").pop() || "mp4";
+        const ext = safeVideoExt(newVideo.name);
         const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: vErr } = await supabase.storage.from("listing-videos").upload(path, newVideo, { contentType: newVideo.type });
         if (vErr) throw vErr;
@@ -305,30 +325,30 @@ const DeleteListings = () => {
         finalVideoUrl = pub.publicUrl;
       }
 
-      const priceNum = Number(form.price);
-      if (!Number.isFinite(priceNum) || priceNum < 0) {
-        toast.error("Invalid price");
-        setUpdating(false);
-        await supabase.auth.signOut();
-        return;
-      }
-
       const { error: upErr } = await supabase.from("listings").update({
-        name: form.name.trim(),
-        state: form.state.trim(),
-        city: form.city.trim(),
-        lga: form.lga.trim(),
-        estate_name: form.estate_name.trim() || null,
-        area_of_land: form.area_of_land.trim() || null,
-        price: priceNum,
-        structure_category: form.structure_category.trim(),
-        building_category: form.building_category.trim(),
-        nature_of_purchase: form.nature_of_purchase.trim(),
-        comment: form.comment.trim() || null,
+        name: safe.name,
+        state: safe.state,
+        city: safe.city,
+        lga: safe.lga,
+        estate_name: safe.estate_name || null,
+        area_of_land: safe.area_of_land || null,
+        price: safe.price,
+        structure_category: safe.structure_category,
+        building_category: safe.building_category,
+        nature_of_purchase: safe.nature_of_purchase,
+        comment: safe.comment || null,
         image_urls: finalImageUrls,
         video_url: finalVideoUrl,
       }).eq("id", editing.id);
       if (upErr) throw upErr;
+
+      // Cleanup orphaned images & replaced video
+      const originalImages = editing.image_urls ?? [];
+      const removedImages = originalImages.filter((u) => !keepImages.includes(u));
+      if (removedImages.length) await removeStorageFiles("listing-images", removedImages);
+      if (editing.video_url && editing.video_url !== finalVideoUrl) {
+        await removeStorageFiles("listing-videos", [editing.video_url]);
+      }
 
       await supabase.auth.signOut();
       toast.success("Listing updated");
