@@ -79,6 +79,7 @@ const ListingDetails = () => {
               images={listing.image_urls}
               alt={listing.name}
               autoPlay
+              fit="contain"
               className="aspect-[16/10] w-full"
               rounded="rounded-2xl"
             />

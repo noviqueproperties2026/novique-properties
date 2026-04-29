@@ -92,7 +92,6 @@ const Upload = () => {
 
     const requiredText: [string, string][] = [
       ["name", safe.name], ["state", safe.state], ["city", safe.city], ["lga", safe.lga],
-      ["estate name", safe.estate_name], ["area of land", safe.area_of_land],
       ["structure", safe.structure], ["building", safe.building], ["nature of purchase", safe.purchase],
       ["comment", safe.comment], ["admin email", safe.email],
     ];
@@ -159,8 +158,8 @@ const Upload = () => {
         state: safe.state,
         city: safe.city,
         lga: safe.lga,
-        estate_name: safe.estate_name,
-        area_of_land: safe.area_of_land,
+        estate_name: safe.estate_name || null,
+        area_of_land: safe.area_of_land || null,
         price: safe.price,
         structure_category: safe.structure,
         building_category: safe.building,
@@ -223,8 +222,8 @@ const Upload = () => {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Estate name"><Input maxLength={120} value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
-            <Field label="Area of land"><Input maxLength={60} value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
+            <Field label="Estate name (optional)"><Input maxLength={120} value={form.estate_name} onChange={(e) => set("estate_name", e.target.value)} /></Field>
+            <Field label="Area of land (optional)"><Input maxLength={60} value={form.area_of_land} onChange={(e) => set("area_of_land", e.target.value)} placeholder="e.g. 600 sqm" /></Field>
             <Field label="Price (₦)"><Input type="number" min="0" max="1000000000000000" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
           </div>
 
