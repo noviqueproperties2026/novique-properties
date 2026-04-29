@@ -39,6 +39,7 @@ const About = () => {
             </div>
           ))}
         </div>
+      </section>
 
       <section className="container py-16 grid gap-10 lg:grid-cols-2">
         <div>
