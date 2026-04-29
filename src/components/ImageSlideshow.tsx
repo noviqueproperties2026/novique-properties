@@ -8,9 +8,10 @@ interface Props {
   autoPlay?: boolean;
   className?: string;
   rounded?: string;
+  fit?: "cover" | "contain";
 }
 
-export const ImageSlideshow = ({ images, alt, autoPlay = false, className, rounded = "rounded-t-2xl" }: Props) => {
+export const ImageSlideshow = ({ images, alt, autoPlay = false, className, rounded = "rounded-t-2xl", fit = "cover" }: Props) => {
   const [i, setI] = useState(0);
   const safe = images?.length ? images : [];
 
@@ -40,11 +41,11 @@ export const ImageSlideshow = ({ images, alt, autoPlay = false, className, round
   }
 
   return (
-    <div className={cn("relative overflow-hidden bg-muted group", rounded, className)}>
+    <div className={cn("relative overflow-hidden group", fit === "contain" ? "bg-white" : "bg-muted", rounded, className)}>
       <img
         src={safe[i]}
         alt={`${alt} — image ${i + 1}`}
-        className="h-full w-full object-cover transition-smooth"
+        className={cn("h-full w-full transition-smooth", fit === "contain" ? "object-contain" : "object-cover")}
         loading="lazy"
       />
       {safe.length > 1 && (
