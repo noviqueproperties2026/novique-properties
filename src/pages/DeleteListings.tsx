@@ -22,31 +22,7 @@ import {
 } from "@/lib/sanitize";
 import { fileToPayload } from "@/lib/file-encode";
 
-// Extract the storage object path from a Supabase public URL.
-// Public URL pattern: <base>/storage/v1/object/public/<bucket>/<path>
-const pathFromPublicUrl = (url: string, bucket: string): string | null => {
-  try {
-    const marker = `/storage/v1/object/public/${bucket}/`;
-    const idx = url.indexOf(marker);
-    if (idx === -1) return null;
-    return decodeURIComponent(url.slice(idx + marker.length));
-  } catch {
-    return null;
-  }
-};
-
-// Safely remove a list of files from a bucket. Logs but never throws.
-const removeStorageFiles = async (bucket: string, urls: string[]) => {
-  const paths = urls
-    .map((u) => pathFromPublicUrl(u, bucket))
-    .filter((p): p is string => !!p);
-  if (paths.length === 0) return;
-  try {
-    await supabase.storage.from(bucket).remove(paths);
-  } catch (err) {
-    console.warn(`Storage cleanup failed for ${bucket}`, err);
-  }
-};
+// Storage cleanup is now handled server-side by the edge functions.
 
 const PAGE = 20;
 const ANY = "any";
