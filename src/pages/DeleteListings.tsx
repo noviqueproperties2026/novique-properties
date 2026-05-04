@@ -18,8 +18,9 @@ import { formatNaira, type Listing } from "@/types/listing";
 import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
-  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+  whitelist, validateImageFile, validateVideoFile,
 } from "@/lib/sanitize";
+import { fileToPayload } from "@/lib/file-encode";
 
 // Extract the storage object path from a Supabase public URL.
 // Public URL pattern: <base>/storage/v1/object/public/<bucket>/<path>
