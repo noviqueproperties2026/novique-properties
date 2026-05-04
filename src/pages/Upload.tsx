@@ -15,8 +15,9 @@ import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
-  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+  whitelist, validateImageFile, validateVideoFile,
 } from "@/lib/sanitize";
+import { fileToPayload } from "@/lib/file-encode";
 
 const MAX_IMAGES = 12;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -108,68 +109,50 @@ const Upload = () => {
 
     setSubmitting(true);
     try {
-      // Auth as admin
+      // 1) Authenticate as admin (acquires JWT)
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
         email: safe.email,
         password: safe.password,
       });
-      if (signErr || !signIn.user) {
-        toast.error("Incorrect security details provided");
-        setSubmitting(false);
-        return;
-      }
-      // Verify admin role
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", signIn.user.id);
-      const isAdmin = roles?.some((r) => r.role === "admin");
-      if (!isAdmin) {
-        await supabase.auth.signOut();
+      if (signErr || !signIn.user || !signIn.session) {
         toast.error("Incorrect security details provided");
         setSubmitting(false);
         return;
       }
 
-      // Upload images — sanitized extensions only
-      const imageUrls: string[] = [];
-      for (const file of images) {
-        const ext = safeImageExt(file.name);
-        const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("listing-images").getPublicUrl(path);
-        imageUrls.push(pub.publicUrl);
-      }
+      // 2) Encode files to base64 for the edge function
+      const imagesPayload = await Promise.all(images.map(fileToPayload));
+      const videoPayload = video ? await fileToPayload(video) : null;
 
-      // Upload video
-      let videoUrl: string | null = null;
-      if (video) {
-        const ext = safeVideoExt(video.name);
-        const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: vErr } = await supabase.storage.from("listing-videos").upload(path, video, { contentType: video.type });
-        if (vErr) throw vErr;
-        const { data: pub } = supabase.storage.from("listing-videos").getPublicUrl(path);
-        videoUrl = pub.publicUrl;
-      }
-
-      const { error: insertErr } = await supabase.from("listings").insert({
-        name: safe.name,
-        state: safe.state,
-        city: safe.city,
-        lga: safe.lga,
-        estate_name: safe.estate_name || null,
-        area_of_land: safe.area_of_land || null,
-        price: safe.price,
-        structure_category: safe.structure,
-        building_category: safe.building,
-        nature_of_purchase: safe.purchase,
-        comment: safe.comment,
-        image_urls: imageUrls,
-        video_url: videoUrl,
-        created_by: signIn.user.id,
+      // 3) Call the secure edge function (it re-validates admin role,
+      //    schema, and file content via magic bytes server-side)
+      const { data, error: fnErr } = await supabase.functions.invoke("admin-upload-listing", {
+        body: {
+          listing: {
+            name: safe.name,
+            state: safe.state,
+            city: safe.city,
+            lga: safe.lga,
+            estate_name: safe.estate_name || null,
+            area_of_land: safe.area_of_land || null,
+            price: safe.price,
+            structure_category: safe.structure,
+            building_category: safe.building,
+            nature_of_purchase: safe.purchase,
+            comment: safe.comment,
+          },
+          images: imagesPayload,
+          video: videoPayload,
+        },
       });
-      if (insertErr) throw insertErr;
+
+      if (fnErr || (data && (data as { error?: string }).error)) {
+        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Upload failed";
+        toast.error(msg);
+        await supabase.auth.signOut();
+        setSubmitting(false);
+        return;
+      }
 
       toast.success("Listing uploaded successfully");
       setForm({ name: "", state: "", city: "", lga: "", estate_name: "", area_of_land: "", price: "", structure: "", building: "", purchase: "", comment: "", email: "", password: "" });

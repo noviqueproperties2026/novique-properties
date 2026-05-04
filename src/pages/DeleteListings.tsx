@@ -18,34 +18,11 @@ import { formatNaira, type Listing } from "@/types/listing";
 import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
-  whitelist, validateImageFile, validateVideoFile, safeImageExt, safeVideoExt,
+  whitelist, validateImageFile, validateVideoFile,
 } from "@/lib/sanitize";
+import { fileToPayload } from "@/lib/file-encode";
 
-// Extract the storage object path from a Supabase public URL.
-// Public URL pattern: <base>/storage/v1/object/public/<bucket>/<path>
-const pathFromPublicUrl = (url: string, bucket: string): string | null => {
-  try {
-    const marker = `/storage/v1/object/public/${bucket}/`;
-    const idx = url.indexOf(marker);
-    if (idx === -1) return null;
-    return decodeURIComponent(url.slice(idx + marker.length));
-  } catch {
-    return null;
-  }
-};
-
-// Safely remove a list of files from a bucket. Logs but never throws.
-const removeStorageFiles = async (bucket: string, urls: string[]) => {
-  const paths = urls
-    .map((u) => pathFromPublicUrl(u, bucket))
-    .filter((p): p is string => !!p);
-  if (paths.length === 0) return;
-  try {
-    await supabase.storage.from(bucket).remove(paths);
-  } catch (err) {
-    console.warn(`Storage cleanup failed for ${bucket}`, err);
-  }
-};
+// Storage cleanup is now handled server-side by the edge functions.
 
 const PAGE = 20;
 const ANY = "any";
@@ -151,32 +128,23 @@ const DeleteListings = () => {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
         email: cleanEmail, password: delPassword,
       });
-      if (signErr || !signIn.user) {
+      if (signErr || !signIn.user || !signIn.session) {
         toast.error("Incorrect security details provided");
         setDeleting(false);
         return;
       }
-      const { data: roles } = await supabase
-        .from("user_roles").select("role").eq("user_id", signIn.user.id);
-      const isAdmin = roles?.some((r) => r.role === "admin");
-      if (!isAdmin) {
+
+      const { data, error: fnErr } = await supabase.functions.invoke("admin-delete-listing", {
+        body: { id: target.id },
+      });
+
+      if (fnErr || (data && (data as { error?: string }).error)) {
+        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Delete failed";
+        toast.error(msg);
         await supabase.auth.signOut();
-        toast.error("Incorrect security details provided");
         setDeleting(false);
         return;
       }
-
-      // Capture media URLs BEFORE deleting the row
-      const imageUrls = target.image_urls ?? [];
-      const videoUrl = target.video_url;
-
-      const { error: delErr } = await supabase
-        .from("listings").delete().eq("id", target.id);
-      if (delErr) throw delErr;
-
-      // Cleanup orphaned files (best-effort, runs while still authenticated)
-      await removeStorageFiles("listing-images", imageUrls);
-      if (videoUrl) await removeStorageFiles("listing-videos", [videoUrl]);
 
       await supabase.auth.signOut();
       toast.success("Listing and associated files deleted");
@@ -287,67 +255,45 @@ const DeleteListings = () => {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
         email: cleanEmail, password: editPassword,
       });
-      if (signErr || !signIn.user) {
+      if (signErr || !signIn.user || !signIn.session) {
         toast.error("Incorrect security details provided");
         setUpdating(false);
         return;
       }
-      const { data: roles } = await supabase
-        .from("user_roles").select("role").eq("user_id", signIn.user.id);
-      const isAdmin = roles?.some((r) => r.role === "admin");
-      if (!isAdmin) {
+
+      // Encode new media to base64
+      const newImagesPayload = await Promise.all(newImages.map(fileToPayload));
+      const newVideoPayload = newVideo ? await fileToPayload(newVideo) : null;
+
+      const { data, error: fnErr } = await supabase.functions.invoke("admin-update-listing", {
+        body: {
+          id: editing.id,
+          listing: {
+            name: safe.name,
+            state: safe.state,
+            city: safe.city,
+            lga: safe.lga,
+            estate_name: safe.estate_name || null,
+            area_of_land: safe.area_of_land || null,
+            price: safe.price,
+            structure_category: safe.structure_category,
+            building_category: safe.building_category,
+            nature_of_purchase: safe.nature_of_purchase,
+            comment: safe.comment || null,
+          },
+          keep_image_urls: keepImages,
+          new_images: newImagesPayload,
+          keep_video_url: keepVideo,
+          new_video: newVideoPayload,
+        },
+      });
+
+      if (fnErr || (data && (data as { error?: string }).error)) {
+        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Update failed";
+        toast.error(msg);
         await supabase.auth.signOut();
-        toast.error("Incorrect security details provided");
         setUpdating(false);
         return;
-      }
-
-      // Upload new images — sanitized extensions only
-      const uploadedImageUrls: string[] = [];
-      for (const file of newImages) {
-        const ext = safeImageExt(file.name);
-        const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("listing-images").upload(path, file, { contentType: file.type });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("listing-images").getPublicUrl(path);
-        uploadedImageUrls.push(pub.publicUrl);
-      }
-      const finalImageUrls = [...keepImages, ...uploadedImageUrls];
-
-      // Handle video
-      let finalVideoUrl: string | null = keepVideo;
-      if (newVideo) {
-        const ext = safeVideoExt(newVideo.name);
-        const path = `${signIn.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: vErr } = await supabase.storage.from("listing-videos").upload(path, newVideo, { contentType: newVideo.type });
-        if (vErr) throw vErr;
-        const { data: pub } = supabase.storage.from("listing-videos").getPublicUrl(path);
-        finalVideoUrl = pub.publicUrl;
-      }
-
-      const { error: upErr } = await supabase.from("listings").update({
-        name: safe.name,
-        state: safe.state,
-        city: safe.city,
-        lga: safe.lga,
-        estate_name: safe.estate_name || null,
-        area_of_land: safe.area_of_land || null,
-        price: safe.price,
-        structure_category: safe.structure_category,
-        building_category: safe.building_category,
-        nature_of_purchase: safe.nature_of_purchase,
-        comment: safe.comment || null,
-        image_urls: finalImageUrls,
-        video_url: finalVideoUrl,
-      }).eq("id", editing.id);
-      if (upErr) throw upErr;
-
-      // Cleanup orphaned images & replaced video
-      const originalImages = editing.image_urls ?? [];
-      const removedImages = originalImages.filter((u) => !keepImages.includes(u));
-      if (removedImages.length) await removeStorageFiles("listing-images", removedImages);
-      if (editing.video_url && editing.video_url !== finalVideoUrl) {
-        await removeStorageFiles("listing-videos", [editing.video_url]);
       }
 
       await supabase.auth.signOut();
