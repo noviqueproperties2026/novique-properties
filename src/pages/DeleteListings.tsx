@@ -128,32 +128,23 @@ const DeleteListings = () => {
       const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
         email: cleanEmail, password: delPassword,
       });
-      if (signErr || !signIn.user) {
+      if (signErr || !signIn.user || !signIn.session) {
         toast.error("Incorrect security details provided");
         setDeleting(false);
         return;
       }
-      const { data: roles } = await supabase
-        .from("user_roles").select("role").eq("user_id", signIn.user.id);
-      const isAdmin = roles?.some((r) => r.role === "admin");
-      if (!isAdmin) {
+
+      const { data, error: fnErr } = await supabase.functions.invoke("admin-delete-listing", {
+        body: { id: target.id },
+      });
+
+      if (fnErr || (data && (data as { error?: string }).error)) {
+        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Delete failed";
+        toast.error(msg);
         await supabase.auth.signOut();
-        toast.error("Incorrect security details provided");
         setDeleting(false);
         return;
       }
-
-      // Capture media URLs BEFORE deleting the row
-      const imageUrls = target.image_urls ?? [];
-      const videoUrl = target.video_url;
-
-      const { error: delErr } = await supabase
-        .from("listings").delete().eq("id", target.id);
-      if (delErr) throw delErr;
-
-      // Cleanup orphaned files (best-effort, runs while still authenticated)
-      await removeStorageFiles("listing-images", imageUrls);
-      if (videoUrl) await removeStorageFiles("listing-videos", [videoUrl]);
 
       await supabase.auth.signOut();
       toast.success("Listing and associated files deleted");
