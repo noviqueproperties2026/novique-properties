@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Listing } from "@/types/listing";
 import { formatNaira } from "@/types/listing";
 import { Layout } from "@/components/Layout";
+import { FloatingContact } from "@/components/FloatingContact";
 import { ImageSlideshow } from "@/components/ImageSlideshow";
 import { SidebarListings } from "@/components/SidebarListings";
 import { ChevronLeft, ChevronRight, MapPin, Home, Building2, Tag, Ruler, Loader2, Play } from "lucide-react";
@@ -139,6 +140,8 @@ const ListingDetails = () => {
           <SidebarListings items={sidebarItems} />
         </div>
       </div>
+
+      <FloatingContact />
     </Layout>
   );
 };

@@ -4,6 +4,7 @@ import type { Listing } from "@/types/listing";
 import { Layout } from "@/components/Layout";
 import { SearchBar, emptyFilters, type SearchFilters } from "@/components/SearchBar";
 import { ListingCard } from "@/components/ListingCard";
+import { FloatingContact } from "@/components/FloatingContact";
 import { Button } from "@/components/ui/button";
 import { HIGH_END_AREAS } from "@/data/nigeria-locations";
 import heroImg from "@/assets/hero-estate.jpg";
@@ -187,6 +188,8 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      <FloatingContact />
     </Layout>
   );
 };
