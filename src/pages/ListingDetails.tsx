@@ -140,6 +140,8 @@ const ListingDetails = () => {
           <SidebarListings items={sidebarItems} />
         </div>
       </div>
+
+      <FloatingContact />
     </Layout>
   );
 };
