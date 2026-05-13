@@ -87,6 +87,7 @@ const About = () => {
           <p>📈 Consistent year-on-year growth in listings, clients, and team strength since launch.</p>
         </div>
       </section>
+      <FloatingContact />
     </Layout>
   );
 };
