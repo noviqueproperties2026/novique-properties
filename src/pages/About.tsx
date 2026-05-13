@@ -1,4 +1,5 @@
 import { Layout } from "@/components/Layout";
+import { FloatingContact } from "@/components/FloatingContact";
 import { useEffect } from "react";
 import { Award, Users, Home, ShieldCheck } from "lucide-react";
 
@@ -87,6 +88,7 @@ const About = () => {
           <p>📈 Consistent year-on-year growth in listings, clients, and team strength since launch.</p>
         </div>
       </section>
+      <FloatingContact />
     </Layout>
   );
 };
