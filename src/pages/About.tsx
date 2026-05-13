@@ -1,4 +1,5 @@
 import { Layout } from "@/components/Layout";
+import { FloatingContact } from "@/components/FloatingContact";
 import { useEffect } from "react";
 import { Award, Users, Home, ShieldCheck } from "lucide-react";
 
