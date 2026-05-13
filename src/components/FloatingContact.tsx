@@ -14,7 +14,7 @@ export const FloatingContact = () => {
       role="status"
       aria-label="Contact Novique Properties"
       className={`
-        fixed bottom-4 right-4 z-50
+        fixed bottom-4 left-4 z-50
         flex items-center gap-3
         pl-3 pr-4 py-2.5
         rounded-2xl
