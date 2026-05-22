@@ -5,6 +5,7 @@ import type { Listing } from "@/types/listing";
 import { formatNaira } from "@/types/listing";
 import { Layout } from "@/components/Layout";
 import { FloatingContact } from "@/components/FloatingContact";
+import { AttributePills } from "@/components/AttributePills";
 import { ImageSlideshow } from "@/components/ImageSlideshow";
 import { SidebarListings } from "@/components/SidebarListings";
 import { ChevronLeft, ChevronRight, MapPin, Home, Building2, Tag, Ruler, Loader2, Play } from "lucide-react";
@@ -131,8 +132,8 @@ const ListingDetails = () => {
             {/* Comments */}
             {listing.comment && (
               <div className="bg-card border border-border/60 rounded-2xl p-6">
-                <h2 className="font-display text-xl font-bold text-secondary">About this property</h2>
-                <p className="mt-3 text-muted-foreground whitespace-pre-line leading-relaxed">{listing.comment}</p>
+                <h2 className="font-display text-xl font-bold text-secondary mb-4">About this property</h2>
+                <AttributePills text={listing.comment} />
               </div>
             )}
           </div>
