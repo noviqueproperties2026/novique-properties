@@ -169,17 +169,12 @@ const Upload = () => {
 
   return (
     <Layout>
-      <div className="container py-12 max-w-4xl">
-        <Link
-          to="/delete-listings"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-glow transition-smooth mb-6"
-        >
-          <Trash2 size={15} /> Go to Delete Listings Page →
-        </Link>
+      <div className="container py-10 max-w-4xl">
+        <AdminToolbar active="upload" />
         <div className="mb-8">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin only</span>
           <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-secondary">Upload a property</h1>
-          <p className="mt-2 text-muted-foreground">Add a new listing to the Novique platform. Admin credentials required.</p>
+          <p className="mt-2 text-muted-foreground">Add a new listing to the Novique platform.</p>
         </div>
 
         <form onSubmit={submit} className="bg-card border border-border/60 rounded-2xl p-6 md:p-8 space-y-6 shadow-card">
