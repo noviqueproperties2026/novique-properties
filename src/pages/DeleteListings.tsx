@@ -317,6 +317,50 @@ const DeleteListings = () => {
     }
   };
 
+  const performRank = async () => {
+    if (!ranking) return;
+    const cleanEmail = sanitizeEmail(rankEmail);
+    const positions = Number(rankPositions);
+    if (!Number.isInteger(positions) || positions <= 0) {
+      toast.error("Number of positions must be a positive whole number");
+      return;
+    }
+    if (!cleanEmail || !rankPassword) {
+      toast.error("Provide a valid admin email and password");
+      return;
+    }
+    setRankBusy(true);
+    try {
+      const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
+        email: cleanEmail, password: rankPassword,
+      });
+      if (signErr || !signIn.user) {
+        toast.error("Incorrect security details provided");
+        setRankBusy(false);
+        return;
+      }
+      const { data, error: fnErr } = await supabase.functions.invoke("admin-rank-listing", {
+        body: { id: ranking.id, direction: rankDirection, positions },
+      });
+      if (fnErr || (data && (data as { error?: string }).error)) {
+        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Ranking failed";
+        toast.error(msg);
+        setRankBusy(false);
+        return;
+      }
+      toast.success(`Listing moved ${rankDirection} ${positions} position${positions === 1 ? "" : "s"}`);
+      setRanking(null);
+      setRankPositions(""); setRankEmail(""); setRankPassword("");
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Ranking failed");
+    } finally {
+      setRankBusy(false);
+    }
+  };
+
+
+
   return (
     <Layout>
       <div className="container py-10 max-w-6xl">
