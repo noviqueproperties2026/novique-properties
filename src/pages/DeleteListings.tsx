@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { AdminToolbar } from "@/components/AdminToolbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { formatNaira, type Listing } from "@/types/listing";
-import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
+import { Loader2, Search, Trash2, Pencil, X, Upload as UploadIcon, ArrowUpDown, Hash } from "lucide-react";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
   whitelist, validateImageFile, validateVideoFile,
@@ -32,20 +32,22 @@ const MAX_VIDEO_SECONDS = 120;
 const MAX_PRICE = 50_000_000_000;
 
 interface Filters {
-  q: string; state: string; city: string; lga: string;
+  q: string; number: string; state: string; city: string; lga: string;
   structure: string; building: string;
   area: string; priceMax: number;
 }
 
 const empty: Filters = {
-  q: "", state: ANY, city: "", lga: "",
+  q: "", number: "", state: ANY, city: "", lga: "",
   structure: ANY, building: ANY, area: "", priceMax: MAX_PRICE,
 };
 
 const matches = (l: Listing, f: Filters) => {
+  const num = f.number.trim().toUpperCase();
+  if (num && !l.listing_number.toUpperCase().includes(num)) return false;
   const q = f.q.trim().toLowerCase();
   if (q) {
-    const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state}`.toLowerCase();
+    const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state} ${l.listing_number}`.toLowerCase();
     const tokens = q.split(/\s+/).filter(Boolean);
     if (!tokens.some((t) => hay.includes(t))) return false;
   }
@@ -99,10 +101,18 @@ const DeleteListings = () => {
   const [editPassword, setEditPassword] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  // rank state
+  const [ranking, setRanking] = useState<Listing | null>(null);
+  const [rankDirection, setRankDirection] = useState<"up" | "down">("up");
+  const [rankPositions, setRankPositions] = useState("");
+  const [rankEmail, setRankEmail] = useState("");
+  const [rankPassword, setRankPassword] = useState("");
+  const [rankBusy, setRankBusy] = useState(false);
+
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("listings").select("*").order("created_at", { ascending: false });
+      .from("listings").select("*").order("rank_order", { ascending: true });
     if (!error && data) setAll(data as Listing[]);
     setLoading(false);
   };
