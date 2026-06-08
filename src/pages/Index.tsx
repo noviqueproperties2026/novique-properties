@@ -55,7 +55,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from("listings")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("rank_order", { ascending: true });
       if (!error && data) setAll(data as Listing[]);
       setLoading(false);
     })();
