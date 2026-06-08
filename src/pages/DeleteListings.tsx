@@ -331,6 +331,16 @@ const DeleteListings = () => {
         {/* Search */}
         <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-card mb-8">
           <div className="grid gap-3 md:grid-cols-12">
+            <div className="md:col-span-3 relative">
+              <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Listing # e.g. NQP-4827193"
+                value={filters.number}
+                onChange={(e) => set("number", e.target.value)}
+                className="pl-9 h-11 font-mono uppercase"
+              />
+            </div>
+
             <div className="md:col-span-5 relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -411,10 +421,10 @@ const DeleteListings = () => {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-secondary">
                 <tr>
+                  <Th>Listing #</Th>
                   <Th>Name</Th>
                   <Th>State</Th>
                   <Th>Building</Th>
-                  <Th>Area of land</Th>
                   <Th>Price</Th>
                   <Th className="text-right pr-6">Actions</Th>
                 </tr>
@@ -427,15 +437,23 @@ const DeleteListings = () => {
                 ) : (
                   visible.map((l) => (
                     <tr key={l.id} className="border-t border-border/60 hover:bg-muted/30 transition-smooth">
+                      <Td>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary font-mono text-xs font-bold">
+                          {l.listing_number}
+                        </span>
+                        <div className="text-[10px] text-muted-foreground mt-1">#{l.rank_order}</div>
+                      </Td>
                       <Td><div className="font-semibold text-secondary line-clamp-1">{l.name}</div><div className="text-xs text-muted-foreground">{l.lga}, {l.city}</div></Td>
                       <Td>{l.state}</Td>
                       <Td>{l.building_category}</Td>
-                      <Td>{l.area_of_land || "—"}</Td>
                       <Td className="font-bold text-primary">{formatNaira(l.price)}</Td>
                       <Td className="text-right pr-6">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 flex-wrap">
                           <Button size="sm" variant="outline" onClick={() => openEdit(l)}>
                             <Pencil size={14} className="mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setRanking(l); setRankDirection("up"); setRankPositions(""); setRankEmail(""); setRankPassword(""); }}>
+                            <ArrowUpDown size={14} className="mr-1" /> Rank
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => setTarget(l)}>
                             <Trash2 size={14} className="mr-1" /> Delete
