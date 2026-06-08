@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { AdminToolbar } from "@/components/AdminToolbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
 import { formatNaira, type Listing } from "@/types/listing";
-import { Loader2, Search, Trash2, Pencil, X, Upload as UploadIcon, ArrowUpDown, Hash } from "lucide-react";
+import { Loader2, Search, Trash2, ChevronLeft, Pencil, X, Upload as UploadIcon } from "lucide-react";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
   whitelist, validateImageFile, validateVideoFile,
@@ -32,22 +32,20 @@ const MAX_VIDEO_SECONDS = 120;
 const MAX_PRICE = 50_000_000_000;
 
 interface Filters {
-  q: string; number: string; state: string; city: string; lga: string;
+  q: string; state: string; city: string; lga: string;
   structure: string; building: string;
   area: string; priceMax: number;
 }
 
 const empty: Filters = {
-  q: "", number: "", state: ANY, city: "", lga: "",
+  q: "", state: ANY, city: "", lga: "",
   structure: ANY, building: ANY, area: "", priceMax: MAX_PRICE,
 };
 
 const matches = (l: Listing, f: Filters) => {
-  const num = f.number.trim().toUpperCase();
-  if (num && !l.listing_number.toUpperCase().includes(num)) return false;
   const q = f.q.trim().toLowerCase();
   if (q) {
-    const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state} ${l.listing_number}`.toLowerCase();
+    const hay = `${l.name} ${l.estate_name ?? ""} ${l.comment ?? ""} ${l.city} ${l.lga} ${l.state}`.toLowerCase();
     const tokens = q.split(/\s+/).filter(Boolean);
     if (!tokens.some((t) => hay.includes(t))) return false;
   }
@@ -101,18 +99,10 @@ const DeleteListings = () => {
   const [editPassword, setEditPassword] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  // rank state
-  const [ranking, setRanking] = useState<Listing | null>(null);
-  const [rankDirection, setRankDirection] = useState<"up" | "down">("up");
-  const [rankPositions, setRankPositions] = useState("");
-  const [rankEmail, setRankEmail] = useState("");
-  const [rankPassword, setRankPassword] = useState("");
-  const [rankBusy, setRankBusy] = useState(false);
-
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("listings").select("*").order("rank_order", { ascending: true });
+      .from("listings").select("*").order("created_at", { ascending: false });
     if (!error && data) setAll(data as Listing[]);
     setLoading(false);
   };
@@ -317,74 +307,22 @@ const DeleteListings = () => {
     }
   };
 
-  const performRank = async () => {
-    if (!ranking) return;
-    const cleanEmail = sanitizeEmail(rankEmail);
-    const positions = Number(rankPositions);
-    if (!Number.isInteger(positions) || positions <= 0) {
-      toast.error("Number of positions must be a positive whole number");
-      return;
-    }
-    if (!cleanEmail || !rankPassword) {
-      toast.error("Provide a valid admin email and password");
-      return;
-    }
-    setRankBusy(true);
-    try {
-      const { data: signIn, error: signErr } = await supabase.auth.signInWithPassword({
-        email: cleanEmail, password: rankPassword,
-      });
-      if (signErr || !signIn.user) {
-        toast.error("Incorrect security details provided");
-        setRankBusy(false);
-        return;
-      }
-      const { data, error: fnErr } = await supabase.functions.invoke("admin-rank-listing", {
-        body: { id: ranking.id, direction: rankDirection, positions },
-      });
-      if (fnErr || (data && (data as { error?: string }).error)) {
-        const msg = (data as { error?: string } | null)?.error || fnErr?.message || "Ranking failed";
-        toast.error(msg);
-        setRankBusy(false);
-        return;
-      }
-      toast.success(`Listing moved ${rankDirection} ${positions} position${positions === 1 ? "" : "s"}`);
-      setRanking(null);
-      setRankPositions(""); setRankEmail(""); setRankPassword("");
-      await load();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Ranking failed");
-    } finally {
-      setRankBusy(false);
-    }
-  };
-
-
-
   return (
     <Layout>
-      <div className="container py-10 max-w-6xl">
-        <AdminToolbar active="delete" />
+      <div className="container py-12 max-w-6xl">
+        <Link to="/upload" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-smooth">
+          <ChevronLeft size={16} /> Back to Upload
+        </Link>
 
-        <div className="mb-8">
+        <div className="mt-4 mb-8">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin only</span>
           <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-secondary">Manage listings</h1>
-          <p className="mt-2 text-muted-foreground">Search, edit, rank or remove existing properties.</p>
+          <p className="mt-2 text-muted-foreground">Search, edit or remove existing properties. Admin credentials required.</p>
         </div>
 
         {/* Search */}
         <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-card mb-8">
           <div className="grid gap-3 md:grid-cols-12">
-            <div className="md:col-span-3 relative">
-              <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Listing # e.g. NQP-4827193"
-                value={filters.number}
-                onChange={(e) => set("number", e.target.value)}
-                className="pl-9 h-11 font-mono uppercase"
-              />
-            </div>
-
             <div className="md:col-span-5 relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -465,10 +403,10 @@ const DeleteListings = () => {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-secondary">
                 <tr>
-                  <Th>Listing #</Th>
                   <Th>Name</Th>
                   <Th>State</Th>
                   <Th>Building</Th>
+                  <Th>Area of land</Th>
                   <Th>Price</Th>
                   <Th className="text-right pr-6">Actions</Th>
                 </tr>
@@ -481,23 +419,15 @@ const DeleteListings = () => {
                 ) : (
                   visible.map((l) => (
                     <tr key={l.id} className="border-t border-border/60 hover:bg-muted/30 transition-smooth">
-                      <Td>
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary font-mono text-xs font-bold">
-                          {l.listing_number}
-                        </span>
-                        <div className="text-[10px] text-muted-foreground mt-1">#{l.rank_order}</div>
-                      </Td>
                       <Td><div className="font-semibold text-secondary line-clamp-1">{l.name}</div><div className="text-xs text-muted-foreground">{l.lga}, {l.city}</div></Td>
                       <Td>{l.state}</Td>
                       <Td>{l.building_category}</Td>
+                      <Td>{l.area_of_land || "—"}</Td>
                       <Td className="font-bold text-primary">{formatNaira(l.price)}</Td>
                       <Td className="text-right pr-6">
-                        <div className="flex justify-end gap-2 flex-wrap">
+                        <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => openEdit(l)}>
                             <Pencil size={14} className="mr-1" /> Edit
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => { setRanking(l); setRankDirection("up"); setRankPositions(""); setRankEmail(""); setRankPassword(""); }}>
-                            <ArrowUpDown size={14} className="mr-1" /> Rank
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => setTarget(l)}>
                             <Trash2 size={14} className="mr-1" /> Delete
@@ -524,56 +454,6 @@ const DeleteListings = () => {
           Showing {visible.length} of {filtered.length} matching listing{filtered.length === 1 ? "" : "s"}.
         </p>
       </div>
-
-      {/* Rank dialog */}
-      <Dialog open={!!ranking} onOpenChange={(o) => { if (!o) { setRanking(null); setRankPositions(""); setRankEmail(""); setRankPassword(""); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><ArrowUpDown size={18} className="text-primary" /> Rank listing</DialogTitle>
-            <DialogDescription>
-              Adjust the position of <strong className="text-secondary">{ranking?.name}</strong> in the public listing order.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Direction</Label>
-              <Select value={rankDirection} onValueChange={(v) => setRankDirection(v as "up" | "down")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="up">Move Up</SelectItem>
-                  <SelectItem value="down">Move Down</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Number of positions</Label>
-              <Input
-                type="number" min="1" step="1"
-                value={rankPositions}
-                onChange={(e) => setRankPositions(e.target.value)}
-                placeholder="e.g. 5"
-              />
-              <p className="text-xs text-muted-foreground">If higher than available positions, listing moves to the first or last position.</p>
-            </div>
-            <div className="border-t border-border pt-4 space-y-3">
-              <div className="space-y-1.5">
-                <Label>Admin email</Label>
-                <Input type="email" value={rankEmail} onChange={(e) => setRankEmail(e.target.value)} autoComplete="off" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Admin password</Label>
-                <Input type="password" value={rankPassword} onChange={(e) => setRankPassword(e.target.value)} autoComplete="off" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRanking(null)} disabled={rankBusy}>Cancel</Button>
-            <Button onClick={performRank} disabled={rankBusy} className="gradient-primary border-0 hover:opacity-90">
-              {rankBusy ? <><Loader2 className="animate-spin mr-2" size={16} /> Ranking…</> : "Rank Listing"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete confirmation */}
       <Dialog open={!!target} onOpenChange={(o) => { if (!o) { setTarget(null); setDelEmail(""); setDelPassword(""); } }}>

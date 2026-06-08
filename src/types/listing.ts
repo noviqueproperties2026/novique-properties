@@ -16,8 +16,6 @@ export interface Listing {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  listing_number: string;
-  rank_order: number;
 }
 
 export const formatNaira = (n: number) =>

@@ -136,15 +136,6 @@ Deno.serve(async (req) => {
     return json({ error: insErr.message }, 500);
   }
 
-  // Log lifecycle event
-  await svc.from("listing_events").insert({
-    listing_id: inserted.id,
-    event_type: "uploaded",
-    created_by: admin.id,
-    created_by_email: admin.email,
-    details: { image_count: imageUrls.length, has_video: !!videoUrl },
-  });
-
   await audit(svc, {
     user_id: admin.id, user_email: admin.email, action: "upload",
     listing_id: inserted.id, success: true, ip_address: ip, user_agent: ua,

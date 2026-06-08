@@ -8,7 +8,7 @@ import { FloatingContact } from "@/components/FloatingContact";
 import { AttributePills } from "@/components/AttributePills";
 import { ImageSlideshow } from "@/components/ImageSlideshow";
 import { SidebarListings } from "@/components/SidebarListings";
-import { ChevronLeft, ChevronRight, MapPin, Home, Building2, Tag, Ruler, Loader2, Play, Hash } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Home, Building2, Tag, Ruler, Loader2, Play } from "lucide-react";
 
 const ListingDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +25,7 @@ const ListingDetails = () => {
     (async () => {
       const [one, list] = await Promise.all([
         supabase.from("listings").select("*").eq("id", id!).maybeSingle(),
-        supabase.from("listings").select("*").order("rank_order", { ascending: true }).limit(50),
+        supabase.from("listings").select("*").order("created_at", { ascending: false }).limit(50),
       ]);
       setListing((one.data as Listing) ?? null);
       setAll((list.data as Listing[]) ?? []);
@@ -109,17 +109,6 @@ const ListingDetails = () => {
                 </div>
               </div>
             )}
-
-            {/* Listing number badge */}
-            <div className="inline-flex items-center gap-3 pl-4 pr-5 py-3 rounded-2xl bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-lg border border-white/20">
-              <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/20">
-                <Hash size={18} />
-              </span>
-              <div className="leading-tight">
-                <div className="text-[10px] font-medium uppercase tracking-wider text-white/80">Listing Number</div>
-                <div className="font-mono text-lg font-bold">{listing.listing_number}</div>
-              </div>
-            </div>
 
             {/* Header */}
             <div>

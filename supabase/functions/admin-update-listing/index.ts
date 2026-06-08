@@ -177,34 +177,6 @@ Deno.serve(async (req) => {
     if (p) await svc.storage.from("listing-videos").remove([p]);
   }
 
-  // Log lifecycle events
-  const events: Array<Record<string, unknown>> = [{
-    listing_id: body.id,
-    event_type: "edited",
-    created_by: admin.id,
-    created_by_email: admin.email,
-    details: { fields_updated: Object.keys(listing) },
-  }];
-  if (newImageUrls.length > 0 || removedImages.length > 0) {
-    events.push({
-      listing_id: body.id,
-      event_type: "images_updated",
-      created_by: admin.id,
-      created_by_email: admin.email,
-      details: { added: newImageUrls.length, removed: removedImages.length, kept: body.keep_image_urls.length },
-    });
-  }
-  if (body.new_video || (existing.video_url && !finalVideoUrl)) {
-    events.push({
-      listing_id: body.id,
-      event_type: "video_updated",
-      created_by: admin.id,
-      created_by_email: admin.email,
-      details: { removed: !!(existing.video_url && !finalVideoUrl), replaced: !!body.new_video },
-    });
-  }
-  await svc.from("listing_events").insert(events);
-
   await audit(svc, {
     user_id: admin.id, user_email: admin.email, action: "update",
     listing_id: body.id, success: true, ip_address: ip, user_agent: ua,

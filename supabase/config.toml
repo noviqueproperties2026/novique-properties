@@ -11,6 +11,3 @@ verify_jwt = false
 
 [functions.admin-delete-listing]
 verify_jwt = false
-
-[functions.admin-rank-listing]
-verify_jwt = false

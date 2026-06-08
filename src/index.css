@@ -133,13 +133,4 @@ All colors MUST be HSL.
   .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .transition-smooth { transition: var(--transition-smooth); }
-
-  @keyframes float-up {
-    0%   { transform: translateY(0) translateX(0); opacity: 0; }
-    10%  { opacity: 1; }
-    90%  { opacity: 1; }
-    100% { transform: translateY(-110vh) translateX(20px); opacity: 0; }
-  }
-  .animate-float { animation: float-up linear infinite; }
 }
-
