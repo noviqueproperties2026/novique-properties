@@ -56,6 +56,44 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          listing_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          listing_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          listing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           area_of_land: string | null
@@ -68,9 +106,11 @@ export type Database = {
           id: string
           image_urls: string[]
           lga: string
+          listing_number: string
           name: string
           nature_of_purchase: string
           price: number
+          rank_order: number
           state: string
           structure_category: string
           updated_at: string
@@ -87,9 +127,11 @@ export type Database = {
           id?: string
           image_urls?: string[]
           lga: string
+          listing_number: string
           name: string
           nature_of_purchase: string
           price: number
+          rank_order?: number
           state: string
           structure_category: string
           updated_at?: string
@@ -106,9 +148,11 @@ export type Database = {
           id?: string
           image_urls?: string[]
           lga?: string
+          listing_number?: string
           name?: string
           nature_of_purchase?: string
           price?: number
+          rank_order?: number
           state?: string
           structure_category?: string
           updated_at?: string
@@ -142,6 +186,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_listing_number: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
