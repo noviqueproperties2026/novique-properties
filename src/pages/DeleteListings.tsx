@@ -319,15 +319,13 @@ const DeleteListings = () => {
 
   return (
     <Layout>
-      <div className="container py-12 max-w-6xl">
-        <Link to="/upload" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-smooth">
-          <ChevronLeft size={16} /> Back to Upload
-        </Link>
+      <div className="container py-10 max-w-6xl">
+        <AdminToolbar active="delete" />
 
-        <div className="mt-4 mb-8">
+        <div className="mb-8">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin only</span>
           <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-secondary">Manage listings</h1>
-          <p className="mt-2 text-muted-foreground">Search, edit or remove existing properties. Admin credentials required.</p>
+          <p className="mt-2 text-muted-foreground">Search, edit, rank or remove existing properties.</p>
         </div>
 
         {/* Search */}
