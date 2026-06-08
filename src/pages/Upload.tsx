@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
+import { AdminToolbar } from "@/components/AdminToolbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,7 @@ import {
   NIGERIA_STATES,
   STRUCTURE_CATEGORIES, BUILDING_CATEGORIES, PURCHASE_NATURES,
 } from "@/data/nigeria-locations";
-import { Loader2, Upload as UploadIcon, X, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader2, Upload as UploadIcon, X } from "lucide-react";
 import {
   sanitizeShort, sanitizeText, sanitizeNumber, sanitizeEmail,
   whitelist, validateImageFile, validateVideoFile,
