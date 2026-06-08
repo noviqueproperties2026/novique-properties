@@ -525,6 +525,56 @@ const DeleteListings = () => {
         </p>
       </div>
 
+      {/* Rank dialog */}
+      <Dialog open={!!ranking} onOpenChange={(o) => { if (!o) { setRanking(null); setRankPositions(""); setRankEmail(""); setRankPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ArrowUpDown size={18} className="text-primary" /> Rank listing</DialogTitle>
+            <DialogDescription>
+              Adjust the position of <strong className="text-secondary">{ranking?.name}</strong> in the public listing order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Direction</Label>
+              <Select value={rankDirection} onValueChange={(v) => setRankDirection(v as "up" | "down")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="up">Move Up</SelectItem>
+                  <SelectItem value="down">Move Down</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Number of positions</Label>
+              <Input
+                type="number" min="1" step="1"
+                value={rankPositions}
+                onChange={(e) => setRankPositions(e.target.value)}
+                placeholder="e.g. 5"
+              />
+              <p className="text-xs text-muted-foreground">If higher than available positions, listing moves to the first or last position.</p>
+            </div>
+            <div className="border-t border-border pt-4 space-y-3">
+              <div className="space-y-1.5">
+                <Label>Admin email</Label>
+                <Input type="email" value={rankEmail} onChange={(e) => setRankEmail(e.target.value)} autoComplete="off" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Admin password</Label>
+                <Input type="password" value={rankPassword} onChange={(e) => setRankPassword(e.target.value)} autoComplete="off" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRanking(null)} disabled={rankBusy}>Cancel</Button>
+            <Button onClick={performRank} disabled={rankBusy} className="gradient-primary border-0 hover:opacity-90">
+              {rankBusy ? <><Loader2 className="animate-spin mr-2" size={16} /> Ranking…</> : "Rank Listing"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete confirmation */}
       <Dialog open={!!target} onOpenChange={(o) => { if (!o) { setTarget(null); setDelEmail(""); setDelPassword(""); } }}>
         <DialogContent>
